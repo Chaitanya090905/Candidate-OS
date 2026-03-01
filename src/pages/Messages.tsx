@@ -1,162 +1,186 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { getMessageThreads, getMessages as fetchMessages, sendMessage } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getApplications, getMessages, sendMessage, subscribeToMessages } from "@/lib/api";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { useState, useEffect } from "react";
+import { MessageSquare, Send, Building, Circle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Send, MessageSquare } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
 
 export default function Messages() {
   const { profile } = useAuth();
-  const [selectedThread, setSelectedThread] = useState("");
-  const [messages, setMessages] = useState<any[]>([]);
-  const [input, setInput] = useState("");
+  const queryClient = useQueryClient();
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [msgContent, setMsgContent] = useState("");
   const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: threads = [] } = useQuery({
-    queryKey: ["messageThreads", profile?.id],
-    queryFn: () => getMessageThreads(profile!.id),
+  const { data: applications = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ["applications", profile?.id],
+    queryFn: () => getApplications(profile!.id),
     enabled: !!profile,
   });
 
-  // Select first thread by default
+  const { data: messages = [] } = useQuery({
+    queryKey: ["messages", selectedAppId],
+    queryFn: () => getMessages(selectedAppId!),
+    enabled: !!selectedAppId,
+  });
+
+  // Realtime
   useEffect(() => {
-    if (threads.length > 0 && !selectedThread) {
-      setSelectedThread(threads[0].applicationId);
-    }
-  }, [threads, selectedThread]);
+    if (!selectedAppId) return;
+    const channel = subscribeToMessages(selectedAppId, () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", selectedAppId] });
+    });
+    return () => { channel.unsubscribe(); };
+  }, [selectedAppId, queryClient]);
 
-  // Fetch messages for selected thread
   useEffect(() => {
-    if (selectedThread) {
-      fetchMessages(selectedThread).then(setMessages);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-      // Subscribe to new messages
-      const channel = supabase
-        .channel(`messages:${selectedThread}`)
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `application_id=eq.${selectedThread}`,
-        }, (payload) => {
-          setMessages((prev) => [...prev, payload.new]);
-        })
-        .subscribe();
-
-      return () => { supabase.removeChannel(channel); };
-    }
-  }, [selectedThread]);
-
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || !profile || !selectedThread) return;
+  const handleSend = async () => {
+    if (!msgContent.trim() || !profile || !selectedAppId) return;
     setSending(true);
-    const result = await sendMessage(selectedThread, profile.id, input);
-    if (result) {
-      setInput("");
-    } else {
-      toast.error("Failed to send message");
-    }
+    await sendMessage(selectedAppId, profile.id, msgContent.trim());
+    setMsgContent("");
     setSending(false);
   };
 
-  const activeThread = threads.find((t) => t.applicationId === selectedThread);
+  const selectedApp = applications.find((a: any) => a.id === selectedAppId);
 
   return (
-    <PageWrapper className="p-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
-        <MessageSquare className="h-6 w-6 text-primary" /> Messages
-      </h1>
+    <PageWrapper className="p-6 space-y-6">
+      <div>
+        <h1 className="text-display text-foreground">Messages</h1>
+        <p className="text-caption text-muted-foreground mt-1">
+          Communicate with recruiters about your applications
+        </p>
+      </div>
 
-      {threads.length === 0 ? (
-        <div className="bg-card rounded-lg border border-border p-12 text-center">
-          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No conversations yet. Messages will appear when you interact with recruiters.</p>
-        </div>
+      {isLoading ? (
+        <SkeletonList count={3} />
+      ) : isError ? (
+        <ErrorState message="Failed to load conversations." onRetry={() => refetch()} />
+      ) : applications.length === 0 ? (
+        <EmptyState
+          icon={MessageSquare}
+          title="No conversations"
+          description="Messages will appear when you have active applications."
+          primaryAction={{ label: "Browse Jobs", href: "/jobs" }}
+        />
       ) : (
-        <div className="grid lg:grid-cols-3 gap-0 bg-card rounded-lg border border-border overflow-hidden" style={{ height: "calc(100vh - 200px)" }}>
-          {/* Thread list */}
-          <div className="border-r border-border overflow-y-auto">
-            {threads.map((t) => (
-              <button
-                key={t.applicationId}
-                onClick={() => setSelectedThread(t.applicationId)}
-                className={cn(
-                  "w-full text-left p-4 border-b border-border transition-colors",
-                  selectedThread === t.applicationId ? "bg-surface" : "hover:bg-surface/50"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <img
-                    src={t.otherParty?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.otherParty?.full_name}`}
-                    alt=""
-                    className="h-8 w-8 rounded-full bg-surface shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-card-foreground truncate">{t.otherParty?.full_name || "Unknown"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{t.companyName} — {t.jobTitle}</p>
-                    {t.lastMessage && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{t.lastMessage.content}</p>
+        <div className="grid lg:grid-cols-3 gap-4 min-h-[500px]">
+          {/* Conversation list */}
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-subheading text-card-foreground">Conversations</h3>
+            </div>
+            <div className="divide-y divide-border max-h-[460px] overflow-y-auto">
+              {applications.map((app: any) => (
+                <button
+                  key={app.id}
+                  onClick={() => setSelectedAppId(app.id)}
+                  className={cn(
+                    "w-full text-left p-4 transition-colors",
+                    selectedAppId === app.id ? "bg-primary/5" : "hover:bg-muted"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-caption font-medium text-card-foreground truncate">
+                        {app.job?.title || "Position"}
+                      </p>
+                      <p className="text-micro text-muted-foreground truncate">
+                        {app.job?.company_name}
+                      </p>
+                    </div>
+                    {selectedAppId === app.id && (
+                      <Circle className="h-2 w-2 fill-primary text-primary shrink-0" />
                     )}
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Chat */}
-          <div className="lg:col-span-2 flex flex-col">
-            {activeThread ? (
+          {/* Thread */}
+          <div className="lg:col-span-2 bg-card rounded-lg border border-border flex flex-col">
+            {selectedAppId ? (
               <>
-                <div className="flex items-center gap-3 p-4 border-b border-border">
-                  <img
-                    src={activeThread.otherParty?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=default`}
-                    alt=""
-                    className="h-8 w-8 rounded-full bg-surface"
-                  />
+                {/* Thread header */}
+                <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                  </div>
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">{activeThread.otherParty?.full_name}</p>
-                    <p className="text-xs text-muted-foreground">{activeThread.companyName}</p>
+                    <p className="text-caption font-medium text-card-foreground">{selectedApp?.job?.title}</p>
+                    <p className="text-micro text-muted-foreground">{selectedApp?.job?.company_name}</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-1.5 text-micro text-success">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success pulse-dot" />
+                    Live
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className={cn("flex", msg.sender_id === profile?.id ? "justify-end" : "justify-start")}>
-                      <div className={cn(
-                        "max-w-[75%] rounded-lg px-4 py-2.5 text-sm",
-                        msg.sender_id === profile?.id
-                          ? "bg-primary text-primary-foreground rounded-br-none"
-                          : "bg-surface text-surface-foreground rounded-bl-none"
-                      )}>
-                        {msg.content}
-                        <p className="text-[10px] opacity-60 mt-1">{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]">
+                  {messages.length === 0 ? (
+                    <p className="text-caption text-muted-foreground text-center py-8">
+                      No messages yet. Start a conversation.
+                    </p>
+                  ) : (
+                    messages.map((msg: any) => (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          "max-w-[75%] rounded-xl p-3",
+                          msg.sender_id === profile?.id
+                            ? "ml-auto bg-primary text-primary-foreground"
+                            : "bg-muted text-card-foreground"
+                        )}
+                      >
+                        <p className="text-caption">{msg.content}</p>
+                        <p className={cn(
+                          "text-micro mt-1",
+                          msg.sender_id === profile?.id ? "text-primary-foreground/60" : "text-muted-foreground"
+                        )}>
+                          {new Date(msg.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                        </p>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
 
-                <form onSubmit={handleSend} className="p-4 border-t border-border flex gap-2">
+                {/* Input */}
+                <div className="border-t border-border p-3 flex items-center gap-2">
                   <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    value={msgContent}
+                    onChange={(e) => setMsgContent(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
                     placeholder="Type a message..."
-                    className="flex-1 bg-surface text-card-foreground rounded-md px-3 py-2.5 text-sm border border-border focus:border-primary outline-none"
+                    className="flex-1 bg-transparent text-caption text-card-foreground outline-none placeholder:text-muted-foreground"
                   />
                   <button
-                    type="submit"
-                    disabled={sending || !input.trim()}
-                    className="bg-primary text-primary-foreground h-10 w-10 rounded-md flex items-center justify-center hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    onClick={handleSend}
+                    disabled={sending || !msgContent.trim()}
+                    className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary-dark transition-colors disabled:opacity-40"
                   >
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3.5 w-3.5" />
                   </button>
-                </form>
+                </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Select a conversation</div>
+              <div className="flex-1 flex items-center justify-center text-caption text-muted-foreground">
+                Select a conversation to view messages
+              </div>
             )}
           </div>
         </div>

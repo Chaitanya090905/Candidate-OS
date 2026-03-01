@@ -15,6 +15,10 @@ import {
   Users,
   PlusCircle,
   Search,
+  Settings,
+  Sparkles,
+  HelpCircle,
+  User,
 } from "lucide-react";
 
 const candidateNavItems = [
@@ -30,6 +34,7 @@ const candidateNavItems = [
 const recruiterNavItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/recruiter/dashboard" },
   { label: "Job Postings", icon: PlusCircle, path: "/recruiter/jobs" },
+  { label: "Assessments", icon: ClipboardCheck, path: "/recruiter/assessments" },
   { label: "Messages", icon: MessageSquare, path: "/messages" },
 ];
 
@@ -38,89 +43,89 @@ export function AppSidebar() {
   const { profile, signOut } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
 
-  const navItems = profile?.role === "recruiter" ? recruiterNavItems : candidateNavItems;
+  const isRecruiter = profile?.role === "recruiter";
+  const navItems = isRecruiter ? recruiterNavItems : candidateNavItems;
 
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 h-screen sticky top-0",
-        sidebarCollapsed ? "w-16" : "w-60"
+        "hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-screen sticky top-0 transition-all duration-200",
+        sidebarCollapsed ? "w-[68px]" : "w-[220px]"
       )}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
-        <span className="text-primary font-extrabold text-xl">C</span>
-        {!sidebarCollapsed && <span className="text-sidebar-accent-foreground font-bold text-sm">andidateOS</span>}
+      <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
+        {!sidebarCollapsed && (
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="text-subheading text-sidebar-accent-foreground">CandidateOS</span>
+          </Link>
+        )}
+        {sidebarCollapsed && (
+          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center mx-auto">
+            <Sparkles className="h-4 w-4 text-primary-foreground" />
+          </div>
+        )}
       </div>
 
-      {/* Role badge */}
-      {!sidebarCollapsed && profile && (
-        <div className="px-4 pt-3 pb-1">
-          <span className={cn(
-            "text-[10px] font-semibold px-2 py-0.5 rounded-full",
-            profile.role === "recruiter"
-              ? "bg-accent-warm/20 text-accent-warm"
-              : "bg-primary/20 text-primary"
-          )}>
-            {profile.role === "recruiter" ? "🏢 Recruiter" : "🎯 Candidate"}
-          </span>
-        </div>
-      )}
-
-      {/* Nav */}
-      <nav className="flex-1 py-4 space-y-1 px-2">
+      {/* Navigation */}
+      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
-          const active = location.pathname.startsWith(item.path);
+          const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
           return (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-sidebar-accent text-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-caption font-medium transition-all duration-150 relative group",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
               )}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!sidebarCollapsed && (
-                <span className="flex-1">{item.label}</span>
+              {/* Active indicator */}
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
               )}
+              <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "")} />
+              {!sidebarCollapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom */}
-      <div className="border-t border-sidebar-border p-3 space-y-2">
-        {!sidebarCollapsed && profile && (
-          <div className="flex items-center gap-2 px-1">
-            <img
-              src={profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.full_name}`}
-              alt=""
-              className="h-7 w-7 rounded-full bg-sidebar-accent"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{profile.full_name}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{profile.email}</p>
-            </div>
-          </div>
-        )}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={signOut}
-            className={cn(
-              "flex items-center gap-2 text-sidebar-foreground hover:text-destructive transition-colors text-sm rounded-md px-2 py-1.5",
-              sidebarCollapsed && "mx-auto"
-            )}
-          >
-            <LogOut className="h-4 w-4" />
-            {!sidebarCollapsed && <span className="text-xs">Sign Out</span>}
-          </button>
-          <button onClick={toggleSidebar} className="ml-auto text-sidebar-foreground hover:text-sidebar-accent-foreground transition-colors">
-            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
-        </div>
+      {/* Bottom: Settings/Help/Profile + Collapse */}
+      <div className="border-t border-sidebar-border py-2 px-2 space-y-0.5">
+        <Link
+          to="/profile"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-caption text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
+        >
+          <User className="h-4 w-4 shrink-0" />
+          {!sidebarCollapsed && <span>Profile</span>}
+        </Link>
+        <Link
+          to="/help"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-caption text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
+        >
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          {!sidebarCollapsed && <span>Help</span>}
+        </Link>
+        <Link
+          to="/settings"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-caption text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
+        >
+          <Settings className="h-4 w-4 shrink-0" />
+          {!sidebarCollapsed && <span>Settings</span>}
+        </Link>
+        <button
+          onClick={toggleSidebar}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-caption text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors w-full"
+        >
+          {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {!sidebarCollapsed && <span>Collapse</span>}
+        </button>
       </div>
     </aside>
   );

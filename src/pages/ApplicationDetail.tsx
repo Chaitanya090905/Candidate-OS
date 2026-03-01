@@ -1,295 +1,282 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { getApplication, getMessages as fetchMessages } from "@/lib/api";
-import { generateInterviewQuestions, type InterviewQuestion } from "@/lib/ai";
-import { PageWrapper } from "@/components/layout/PageWrapper";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getApplication, getMessages, sendMessage, subscribeToMessages } from "@/lib/api";
+import { generateInterviewQuestions } from "@/lib/ai";
+import { StageTimeline } from "@/components/ui/StageTimeline";
+import { FairnessBadge } from "@/components/ui/FairnessBadge";
+import { Badge } from "@/components/ui/Badge";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
-import { useState, useEffect } from "react";
-import { ArrowLeft, Check, Circle, X, ChevronDown, ChevronUp, Send, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { PageWrapper } from "@/components/layout/PageWrapper";
+import {
+  ArrowLeft, Building, MapPin, Calendar, Send, Sparkles,
+  Brain, FileText, Info, Clock, MessageSquare, ChevronRight,
+} from "lucide-react";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
-import { sendMessage } from "@/lib/api";
+import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-const tabs = ["Timeline", "Interview Prep", "Messages"];
 
 export default function ApplicationDetail() {
   const { id } = useParams();
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState("Timeline");
-  const [expandedQ, setExpandedQ] = useState<number | null>(null);
-  const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
-  const [generatingQs, setGeneratingQs] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [msgInput, setMsgInput] = useState("");
-  const [sendingMsg, setSendingMsg] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [msgContent, setMsgContent] = useState("");
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<"timeline" | "messages">("timeline");
 
-  const { data: app, isLoading } = useQuery({
+  const { data: app, isLoading, isError, refetch } = useQuery({
     queryKey: ["application", id],
     queryFn: () => getApplication(id!),
     enabled: !!id,
   });
 
-  // Fetch messages when tab switches
+  const { data: messages = [] } = useQuery({
+    queryKey: ["messages", id],
+    queryFn: () => getMessages(id!),
+    enabled: !!id,
+  });
+
+  // Realtime messages
   useEffect(() => {
-    if (activeTab === "Messages" && id) {
-      fetchMessages(id).then(setMessages);
+    if (!id) return;
+    const channel = subscribeToMessages(id, () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", id] });
+    });
+    return () => { channel.unsubscribe(); };
+  }, [id, queryClient]);
 
-      // Subscribe to new messages
-      const channel = supabase
-        .channel(`messages:${id}`)
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `application_id=eq.${id}`,
-        }, (payload) => {
-          setMessages((prev) => [...prev, payload.new]);
-        })
-        .subscribe();
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-      return () => { supabase.removeChannel(channel); };
-    }
-  }, [activeTab, id]);
-
-  const handleGenerateQuestions = async () => {
-    if (!app) return;
-    setGeneratingQs(true);
-    try {
-      const qs = await generateInterviewQuestions(
-        app.job?.title || "Software Engineer",
-        app.job?.description || "",
-        profile?.skills || []
-      );
-      setQuestions(qs);
-    } catch (e) {
-      toast.error("Failed to generate questions");
-    }
-    setGeneratingQs(false);
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!msgInput.trim() || !profile || !id) return;
-    setSendingMsg(true);
-    const result = await sendMessage(id, profile.id, msgInput);
-    if (result) {
-      setMsgInput("");
-    } else {
-      toast.error("Failed to send message");
-    }
-    setSendingMsg(false);
+  const handleSend = async () => {
+    if (!msgContent.trim() || !profile || !id) return;
+    setSending(true);
+    await sendMessage(id, profile.id, msgContent.trim());
+    setMsgContent("");
+    setSending(false);
   };
 
   if (isLoading) {
     return (
-      <PageWrapper className="p-6">
-        <div className="space-y-4">
-          <div className="h-6 w-40 bg-surface rounded animate-pulse" />
-          <div className="h-14 bg-surface rounded animate-pulse" />
-          <div className="h-40 bg-surface rounded animate-pulse" />
+      <PageWrapper className="p-6 space-y-6">
+        <Skeleton variant="line" className="w-32" />
+        <div className="grid lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3"><SkeletonList count={4} /></div>
+          <div className="lg:col-span-2"><Skeleton variant="card" /></div>
         </div>
       </PageWrapper>
     );
   }
 
-  if (!app) return <PageWrapper className="p-6"><p className="text-muted-foreground">Application not found.</p></PageWrapper>;
+  if (isError || !app) {
+    return (
+      <PageWrapper className="p-6">
+        <ErrorState message="Failed to load application." onRetry={() => refetch()} />
+      </PageWrapper>
+    );
+  }
+
+  const stages = app.stages?.map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    status: s.status,
+    stage_order: s.stage_order,
+    date: s.date,
+    note: s.note,
+  })) || [];
+
+  const nextAction = app.next_action || (
+    app.status === "applied" ? "Application is being reviewed" :
+      app.status === "screening" ? "Screening in progress" :
+        app.status === "assessment" ? "Complete your assessment" :
+          app.status === "interview_scheduled" ? "Prepare for your interview" :
+            app.status === "offer" ? "Review your offer" :
+              "No pending actions"
+  );
 
   return (
     <PageWrapper className="p-6 space-y-6">
-      {/* Header */}
-      <Link to="/applications" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Applications
+      {/* Back + Header */}
+      <Link
+        to="/applications"
+        className="inline-flex items-center gap-1.5 text-caption text-muted-foreground hover:text-primary transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Applications
       </Link>
 
-      <div className="flex flex-col sm:flex-row items-start gap-4">
-        <img
-          src={app.job?.company_logo || `https://ui-avatars.com/api/?name=${app.job?.company_name}&background=1e293b&color=2563eb&bold=true`}
-          alt={app.job?.company_name}
-          className="h-14 w-14 rounded-xl bg-surface object-contain p-2"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${app.job?.company_name || "Co"}&background=1e293b&color=2563eb&bold=true`;
-          }}
-        />
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-foreground">{app.job?.title}</h1>
-          <p className="text-sm text-muted-foreground">{app.job?.company_name} · {app.job?.location} · {app.job?.salary_range}</p>
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center shrink-0">
+            {app.job?.company_logo ? (
+              <img src={app.job.company_logo} alt="" className="h-10 w-10 rounded-xl object-contain" />
+            ) : (
+              <Building className="h-6 w-6 text-muted-foreground" />
+            )}
+          </div>
+          <div>
+            <h1 className="text-display text-foreground">{app.job?.title}</h1>
+            <div className="flex items-center gap-3 mt-1.5 text-caption text-muted-foreground">
+              <span>{app.job?.company_name}</span>
+              {app.job?.location && (
+                <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {app.job.location}</span>
+              )}
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" /> Applied {new Date(app.applied_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
+            </div>
+          </div>
         </div>
-        <StatusPill status={app.status} />
+        <div className="flex items-center gap-3">
+          <FairnessBadge />
+          <StatusPill status={app.status as any} />
+        </div>
       </div>
 
-      {app.status === "rejected" && (
-        <Link to={`/applications/${app.id}/skill-gap`} className="block">
-          <AIResponseBlock>
-            <p>Want to understand why and how to come back stronger? <span className="text-primary font-medium underline">View Skill Gap Analysis →</span></p>
-          </AIResponseBlock>
-        </Link>
-      )}
+      {/* Next Action Card */}
+      <div className="bg-primary/5 border border-primary/15 rounded-lg p-4 flex items-center gap-3">
+        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <Info className="h-4 w-4 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-micro font-semibold text-primary">Next Step</p>
+          <p className="text-caption text-card-foreground">{nextAction}</p>
+        </div>
+        {app.status === "interview_scheduled" && (
+          <button
+            onClick={() => navigate("/interview-prep")}
+            className="text-micro font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-pill hover:bg-primary/15 transition-colors flex items-center gap-1.5"
+          >
+            <Brain className="h-3 w-3" /> Prepare
+          </button>
+        )}
+        {app.status === "rejected" && (
+          <button
+            onClick={() => navigate(`/skill-gap/${app.id}`)}
+            className="text-micro font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-pill hover:bg-primary/15 transition-colors flex items-center gap-1.5"
+          >
+            <Sparkles className="h-3 w-3" /> Skill Analysis
+          </button>
+        )}
+      </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
-              activeTab === tab
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+        <button
+          onClick={() => setActiveTab("timeline")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-caption font-medium transition-colors",
+            activeTab === "timeline" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Clock className="h-3.5 w-3.5" /> Timeline
+        </button>
+        <button
+          onClick={() => setActiveTab("messages")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-caption font-medium transition-colors",
+            activeTab === "messages" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <MessageSquare className="h-3.5 w-3.5" /> Messages
+          {messages.length > 0 && (
+            <span className="text-micro bg-primary/15 text-primary px-1.5 py-0.5 rounded-pill">{messages.length}</span>
+          )}
+        </button>
       </div>
 
-      {/* Timeline */}
-      {activeTab === "Timeline" && (
-        <div className="space-y-0">
-          {(app.stages || []).map((stage, i) => {
-            const statusIcon: Record<string, JSX.Element> = {
-              completed: <Check className="h-3 w-3" />,
-              active: <Circle className="h-3 w-3 fill-current" />,
-              rejected: <X className="h-3 w-3" />,
-              skipped: <Circle className="h-3 w-3" />,
-              pending: <Circle className="h-3 w-3" />,
-            };
-            const statusColor: Record<string, string> = {
-              completed: "bg-success text-success-foreground",
-              active: "bg-primary text-primary-foreground pulse-dot",
-              rejected: "bg-destructive text-destructive-foreground",
-              skipped: "bg-muted text-muted-foreground",
-              pending: "bg-muted text-muted-foreground",
-            };
-            return (
-              <motion.div
-                key={stage.name + i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="flex gap-4"
-              >
-                <div className="flex flex-col items-center">
-                  <div className={cn("h-6 w-6 rounded-full flex items-center justify-center shrink-0", statusColor[stage.status] || "bg-muted text-muted-foreground")}>
-                    {statusIcon[stage.status] || <Circle className="h-3 w-3" />}
-                  </div>
-                  {i < (app.stages?.length || 0) - 1 && <div className="w-0.5 flex-1 bg-border my-1" />}
-                </div>
-                <div className="pb-6">
-                  <p className="text-sm font-medium text-foreground">{stage.name}</p>
-                  {stage.date && <p className="text-xs text-muted-foreground">{new Date(stage.date).toLocaleDateString()}</p>}
-                  {stage.note && <p className="text-xs text-muted-foreground mt-1">{stage.note}</p>}
-                </div>
-              </motion.div>
-            );
-          })}
-          {(app.stages || []).length === 0 && (
-            <p className="text-sm text-muted-foreground">No stages recorded yet.</p>
-          )}
-        </div>
-      )}
+      {/* Tab Content */}
+      {activeTab === "timeline" ? (
+        <div className="grid lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3">
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h3 className="text-subheading text-card-foreground mb-5">Application Progress</h3>
+              {stages.length > 0 ? (
+                <StageTimeline stages={stages} />
+              ) : (
+                <p className="text-caption text-muted-foreground">No stage information available yet.</p>
+              )}
+            </div>
+          </div>
 
-      {/* Interview Prep */}
-      {activeTab === "Interview Prep" && (
-        <div className="space-y-3">
-          {questions.length === 0 && !generatingQs ? (
-            <div className="bg-card rounded-lg border border-border p-8 text-center">
-              <p className="text-sm text-muted-foreground mb-4">Generate AI-powered interview questions for this role.</p>
-              <button
-                onClick={handleGenerateQuestions}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-md hover:bg-primary-dark transition-colors text-sm"
+          <div className="lg:col-span-2 space-y-4">
+            {/* AI Insight */}
+            {app.ai_insight && (
+              <AIResponseBlock
+                actions={[
+                  { label: "Interview Prep", onClick: () => navigate("/interview-prep") },
+                ]}
               >
-                <Sparkles className="h-4 w-4" /> Generate Questions
-              </button>
-            </div>
-          ) : generatingQs ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-card rounded-lg border border-border p-4 space-y-2">
-                  <div className="h-3 w-20 bg-surface rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-surface via-muted to-surface" />
-                  <div className="h-4 w-full bg-surface rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-surface via-muted to-surface" />
+                <p>{app.ai_insight}</p>
+              </AIResponseBlock>
+            )}
+
+            {/* Job Details */}
+            <div className="bg-card rounded-lg border border-border p-5">
+              <h3 className="text-subheading text-card-foreground mb-3">Role Details</h3>
+              {app.job?.description && (
+                <p className="text-caption text-muted-foreground line-clamp-4 mb-3">{app.job.description}</p>
+              )}
+              {(app.job as any)?.requirements?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(app.job as any).requirements.map((r: string) => (
+                    <Badge key={r} variant="neutral">{r}</Badge>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            <>
-              <AIResponseBlock>AI-predicted interview questions based on the role and your profile.</AIResponseBlock>
-              {questions.map((q) => (
-                <div key={q.id} className="bg-card rounded-lg border border-border p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-pill bg-primary/20 text-primary">{q.category}</span>
-                        <span className={cn(
-                          "text-[10px] font-semibold px-2 py-0.5 rounded-pill",
-                          q.difficulty === "Hard" ? "bg-destructive/20 text-destructive" : q.difficulty === "Medium" ? "bg-accent-warm/20 text-accent-warm" : "bg-success/20 text-success"
-                        )}>{q.difficulty}</span>
-                      </div>
-                      <p className="text-sm font-medium text-card-foreground">{q.question}</p>
-                    </div>
-                    <button onClick={() => setExpandedQ(expandedQ === q.id ? null : q.id)} className="text-muted-foreground shrink-0 ml-2">
-                      {expandedQ === q.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  {expandedQ === q.id && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-3 pt-3 border-t border-border space-y-2">
-                      <div><p className="text-xs font-semibold text-accent mb-1">💡 Coaching Tip</p><p className="text-xs text-muted-foreground">{q.coachingTip}</p></div>
-                      <div><p className="text-xs font-semibold text-success mb-1">✅ Example Answer</p><p className="text-xs text-muted-foreground">{q.exampleAnswer}</p></div>
-                    </motion.div>
+          </div>
+        </div>
+      ) : (
+        /* Messages Tab */
+        <div className="bg-card rounded-lg border border-border">
+          <div className="max-h-[400px] overflow-y-auto p-4 space-y-3">
+            {messages.length === 0 ? (
+              <p className="text-caption text-muted-foreground text-center py-8">No messages yet. Start a conversation with the recruiter.</p>
+            ) : (
+              messages.map((msg: any) => (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "max-w-[75%] rounded-lg p-3",
+                    msg.sender_id === profile?.id
+                      ? "ml-auto bg-primary text-primary-foreground"
+                      : "bg-muted text-card-foreground"
                   )}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Messages */}
-      {activeTab === "Messages" && (
-        <div className="space-y-3">
-          <div className="bg-card rounded-lg border border-border overflow-hidden" style={{ height: "400px" }}>
-            <div className="flex flex-col h-full">
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {messages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No messages yet. Start the conversation!</p>
-                ) : (
-                  messages.map((msg) => (
-                    <div key={msg.id} className={cn("flex", msg.sender_id === profile?.id ? "justify-end" : "justify-start")}>
-                      <div className={cn(
-                        "max-w-[75%] rounded-lg px-4 py-2.5 text-sm",
-                        msg.sender_id === profile?.id
-                          ? "bg-primary text-primary-foreground rounded-br-none"
-                          : "bg-surface text-surface-foreground rounded-bl-none"
-                      )}>
-                        {msg.content}
-                        <p className="text-[10px] opacity-60 mt-1">
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <form onSubmit={handleSendMessage} className="p-3 border-t border-border flex gap-2">
-                <input
-                  value={msgInput}
-                  onChange={(e) => setMsgInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-surface text-card-foreground rounded-md px-3 py-2.5 text-sm border border-border focus:border-primary outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={sendingMsg || !msgInput.trim()}
-                  className="bg-primary text-primary-foreground h-10 w-10 rounded-md flex items-center justify-center hover:bg-primary-dark transition-colors disabled:opacity-50"
                 >
-                  <Send className="h-4 w-4" />
-                </button>
-              </form>
-            </div>
+                  <p className="text-caption">{msg.content}</p>
+                  <p className={cn(
+                    "text-micro mt-1",
+                    msg.sender_id === profile?.id ? "text-primary-foreground/60" : "text-muted-foreground"
+                  )}>
+                    {new Date(msg.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                  </p>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          <div className="border-t border-border p-3 flex items-center gap-2">
+            <input
+              value={msgContent}
+              onChange={(e) => setMsgContent(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              placeholder="Type a message..."
+              className="flex-1 bg-transparent text-caption text-card-foreground outline-none placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={handleSend}
+              disabled={sending || !msgContent.trim()}
+              className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary-dark transition-colors disabled:opacity-40"
+            >
+              <Send className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       )}

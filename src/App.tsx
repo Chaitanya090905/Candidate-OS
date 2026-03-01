@@ -22,6 +22,10 @@ import SkillGapAnalysis from "@/pages/SkillGapAnalysis";
 import RecruiterDashboard from "@/pages/recruiter/RecruiterDashboard";
 import JobManagement from "@/pages/recruiter/JobManagement";
 import CandidatePipeline from "@/pages/recruiter/CandidatePipeline";
+import AssessmentManagement from "@/pages/recruiter/AssessmentManagement";
+import Settings from "@/pages/Settings";
+import Help from "@/pages/Help";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -96,6 +100,12 @@ function AppRoutes() {
       <Route path="/recruiter/dashboard" element={<ProtectedRoute requiredRole="recruiter"><RecruiterDashboard /></ProtectedRoute>} />
       <Route path="/recruiter/jobs" element={<ProtectedRoute requiredRole="recruiter"><JobManagement /></ProtectedRoute>} />
       <Route path="/recruiter/pipeline/:jobId" element={<ProtectedRoute requiredRole="recruiter"><CandidatePipeline /></ProtectedRoute>} />
+      <Route path="/recruiter/assessments" element={<ProtectedRoute requiredRole="recruiter"><AssessmentManagement /></ProtectedRoute>} />
+
+      {/* Shared Routes */}
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

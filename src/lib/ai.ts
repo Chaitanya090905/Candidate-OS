@@ -1,61 +1,63 @@
-// Gemini AI Service — uses Gemini 2.0 Flash (free tier)
-// API key from env: VITE_GEMINI_API_KEY
+// Groq AI Service — uses Llama 3.1 8B via Groq (free tier, fastest inference)
+// API key from env: VITE_GROQ_API_KEY
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL = 'llama-3.1-8b-instant';
+const MAX_INPUT_CHARS = 3500; // ~900 tokens — keeps total under free tier TPM limits
+
+function truncateText(text: string, maxChars = MAX_INPUT_CHARS): string {
+    if (text.length <= maxChars) return text;
+    return text.slice(0, maxChars) + '\n... [truncated for brevity]';
+}
 
 function getApiKey(): string {
-    const key = import.meta.env.VITE_GEMINI_API_KEY;
+    const key = import.meta.env.VITE_GROQ_API_KEY;
     if (!key) {
-        console.warn('VITE_GEMINI_API_KEY not set — AI features will use fallback responses');
+        console.warn('VITE_GROQ_API_KEY not set — AI features will use fallback responses');
         return '';
     }
     return key;
 }
 
-interface GeminiResponse {
-    candidates?: {
-        content?: {
-            parts?: { text?: string }[];
-        };
-    }[];
-}
-
-async function callGemini(prompt: string, systemInstruction?: string): Promise<string> {
+async function callLLM(prompt: string, systemInstruction?: string): Promise<string> {
     const apiKey = getApiKey();
     if (!apiKey) {
         return getFallbackResponse(prompt);
     }
 
     try {
-        const body: any = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 2048,
-            },
-        };
+        const messages: { role: string; content: string }[] = [];
 
         if (systemInstruction) {
-            body.systemInstruction = { parts: [{ text: systemInstruction }] };
+            messages.push({ role: 'system', content: systemInstruction });
         }
+        messages.push({ role: 'user', content: prompt });
 
-        const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        const res = await fetch(GROQ_API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: MODEL,
+                messages,
+                temperature: 0.7,
+                max_tokens: 1024,
+            }),
         });
 
         if (!res.ok) {
             const errText = await res.text();
-            console.error('Gemini API error:', res.status, errText);
+            console.error('Groq API error:', res.status, errText);
             return getFallbackResponse(prompt);
         }
 
-        const data: GeminiResponse = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content;
         return text || 'I could not generate a response. Please try again.';
     } catch (err) {
-        console.error('Gemini API call failed:', err);
+        console.error('Groq API call failed:', err);
         return getFallbackResponse(prompt);
     }
 }
@@ -78,8 +80,7 @@ function getFallbackResponse(prompt: string): string {
 
 export async function chatWithCopilot(
     userMessage: string,
-    conversationHistory: { role: string; content: string }[],
-    context?: { applications?: any[]; candidateName?: string; skills?: string[] }
+    context?: string
 ): Promise<string> {
     const systemPrompt = `You are CandidateOS AI Copilot — a helpful, encouraging career assistant embedded in a job application tracking platform. 
 
@@ -90,22 +91,11 @@ You help candidates with:
 - Career advice and skill development
 - Salary negotiation tips
 
-Be concise, specific, and actionable. Use a warm, professional tone. When relevant, reference the candidate's specific applications and skills.
+Be concise, specific, and actionable. Use a warm, professional tone.
 
-${context?.candidateName ? `The candidate's name is ${context.candidateName}.` : ''}
-${context?.skills?.length ? `Their skills include: ${context.skills.join(', ')}.` : ''}
-${context?.applications?.length ? `They have ${context.applications.length} active applications.` : ''}`;
+${context || ''}`;
 
-    const historyText = conversationHistory
-        .slice(-10) // last 10 messages for context
-        .map((m) => `${m.role === 'user' ? 'Candidate' : 'Assistant'}: ${m.content}`)
-        .join('\n');
-
-    const fullPrompt = historyText
-        ? `${historyText}\nCandidate: ${userMessage}\nAssistant:`
-        : userMessage;
-
-    return callGemini(fullPrompt, systemPrompt);
+    return callLLM(userMessage, systemPrompt);
 }
 
 // ── Resume Tailoring ─────────────────────────────────────────
@@ -138,17 +128,16 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
     const prompt = `Analyze this resume for the role of "${jobTitle}":
 
 RESUME:
-${resumeText || 'No resume text provided — analyze based on job requirements alone.'}
+${truncateText(resumeText || 'No resume text provided — analyze based on job requirements alone.', 2000)}
 
 JOB DESCRIPTION:
-${jobDescription || 'No specific job description provided.'}
+${truncateText(jobDescription || 'No specific job description provided.', 1000)}
 
 Provide actionable suggestions to tailor this resume for the role.`;
 
-    const response = await callGemini(prompt, systemPrompt);
+    const response = await callLLM(prompt, systemPrompt);
 
     try {
-        // Try to extract JSON from the response
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             return JSON.parse(jsonMatch[0]);
@@ -157,7 +146,6 @@ Provide actionable suggestions to tailor this resume for the role.`;
         console.error('Failed to parse resume tailor response:', e);
     }
 
-    // Fallback
     return {
         matchScore: 72,
         matchSummary: response.slice(0, 200),
@@ -205,11 +193,11 @@ Generate 6 questions with a good mix of categories and difficulties. Return ONLY
 
     const prompt = `Generate interview questions for: ${jobTitle}
 
-Job Description: ${jobDescription}
+Job Description: ${truncateText(jobDescription, 1500)}
 
 Candidate Skills: ${candidateSkills.join(', ')}`;
 
-    const response = await callGemini(prompt, systemPrompt);
+    const response = await callLLM(prompt, systemPrompt);
 
     try {
         const jsonMatch = response.match(/\[[\s\S]*\]/);
@@ -220,7 +208,6 @@ Candidate Skills: ${candidateSkills.join(', ')}`;
         console.error('Failed to parse interview questions:', e);
     }
 
-    // Fallback questions
     return [
         { id: 1, category: 'Technical', difficulty: 'Medium', question: `Describe your experience with the core technologies required for ${jobTitle}.`, coachingTip: 'Be specific about projects and outcomes.', exampleAnswer: 'In my previous role...' },
         { id: 2, category: 'Behavioral', difficulty: 'Medium', question: 'Tell me about a challenging project you completed recently.', coachingTip: 'Use the STAR method.', exampleAnswer: 'At my previous company...' },
@@ -253,7 +240,7 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
 QUESTION: ${question}
 ANSWER: ${answer}`;
 
-    const response = await callGemini(prompt, systemPrompt);
+    const response = await callLLM(prompt, systemPrompt);
 
     try {
         const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -307,11 +294,11 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
 
     const prompt = `Analyze skill gap for: ${jobTitle}
 
-Job Description: ${jobDescription}
+Job Description: ${truncateText(jobDescription, 1500)}
 Candidate Skills: ${candidateSkills.join(', ')}
-${rejectionNote ? `Rejection reason: ${rejectionNote}` : ''}`;
+${rejectionNote ? `Rejection reason: ${truncateText(rejectionNote, 500)}` : ''}`;
 
-    const response = await callGemini(prompt, systemPrompt);
+    const response = await callLLM(prompt, systemPrompt);
 
     try {
         const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -329,6 +316,6 @@ ${rejectionNote ? `Rejection reason: ${rejectionNote}` : ''}`;
         ],
         nextSteps: ['Focus on deepening your expertise', 'Build portfolio projects', 'Network with professionals in the field'],
         alternativeRoles: ['Similar role at a smaller company', 'Junior version of this role'],
-        motivationalNote: 'Every rejection is a redirect. Keep building, keep learning — you\'re closer than you think! 💪',
+        motivationalNote: 'Every rejection is a redirect. Keep building, keep learning — you are closer than you think!',
     };
 }

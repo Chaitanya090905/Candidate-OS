@@ -3,6 +3,85 @@
 -- Run this in Supabase SQL Editor AFTER the initial schema
 -- ============================================
 
+
+-- ============================================
+-- 0. ASSESSMENTS TABLE (create if not exists)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS assessments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  company TEXT NOT NULL DEFAULT '',
+  duration INTEGER NOT NULL DEFAULT 60,
+  question_count INTEGER NOT NULL DEFAULT 10,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed')),
+  due_date TIMESTAMPTZ,
+  topics TEXT[] DEFAULT '{}',
+  difficulty TEXT NOT NULL DEFAULT 'Medium' CHECK (difficulty IN ('Easy', 'Medium', 'Hard')),
+  score INTEGER CHECK (score IS NULL OR (score >= 0 AND score <= 100)),
+  responses JSONB DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add responses column if table already exists
+ALTER TABLE assessments ADD COLUMN IF NOT EXISTS responses JSONB DEFAULT NULL;
+
+-- Enable RLS
+ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
+
+-- Candidates can read assessments for their applications
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Candidates read own assessments'
+  ) THEN
+    CREATE POLICY "Candidates read own assessments" ON assessments FOR SELECT
+    USING (
+      EXISTS (
+        SELECT 1 FROM applications
+        WHERE applications.id = assessments.application_id
+          AND applications.candidate_id = auth.uid()
+      )
+    );
+  END IF;
+END $$;
+
+-- Candidates can update their own assessment (start, submit score)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Candidates update own assessments'
+  ) THEN
+    CREATE POLICY "Candidates update own assessments" ON assessments FOR UPDATE
+    USING (
+      EXISTS (
+        SELECT 1 FROM applications
+        WHERE applications.id = assessments.application_id
+          AND applications.candidate_id = auth.uid()
+      )
+    );
+  END IF;
+END $$;
+
+-- Recruiters can read assessments for their jobs
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Recruiters read assessments'
+  ) THEN
+    CREATE POLICY "Recruiters read assessments" ON assessments FOR SELECT
+    USING (
+      EXISTS (
+        SELECT 1 FROM applications a
+        JOIN jobs j ON j.id = a.job_id
+        WHERE a.id = assessments.application_id
+          AND j.recruiter_id = auth.uid()
+      )
+    );
+  END IF;
+END $$;
+
 -- ============================================
 -- 1. STORAGE BUCKET: Resumes
 -- ============================================

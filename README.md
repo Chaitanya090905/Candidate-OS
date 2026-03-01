@@ -230,12 +230,4 @@ All notifications use a single `{{message}}` template variable for flexible form
 
 ## 📄 License
 
-This project is private and not licensed for public distribution.
-
----
-
-<p align="center">
-  Built with ❤️ using React, Supabase, and Groq AI
-</p>
-#   C a n d i d a t e - O S  
- 
+This project belongs to Chaitanya Hiran

@@ -282,6 +282,22 @@ export async function createJob(job: Omit<JobRow, 'id' | 'created_at'>) {
     return data;
 }
 
+export async function updateJob(jobId: string, updates: Partial<Omit<JobRow, 'id' | 'created_at'>>) {
+    const { data, error } = await supabase
+        .from('jobs')
+        .update(updates)
+        .eq('id', jobId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error updating job:', error);
+        return null;
+    }
+
+    return data;
+}
+
 export async function getRecruiterJobs(recruiterId: string): Promise<JobRow[]> {
     const { data, error } = await supabase
         .from('jobs')
@@ -373,6 +389,136 @@ export async function updateProfile(userId: string, updates: Partial<Profile>) {
     }
 
     return { error: null };
+}
+
+// ── Assessment Assignment ────────────────────────────────────
+
+export async function createAssessment(data: {
+    application_id: string;
+    title: string;
+    company: string;
+    duration: number;
+    question_count: number;
+    topics: string[];
+    difficulty: string;
+    due_date: string | null;
+}) {
+    const { data: result, error } = await supabase
+        .from('assessments')
+        .insert({ ...data, status: 'pending', score: null })
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error creating assessment:', error);
+        return null;
+    }
+
+    return result;
+}
+
+export async function getRecruiterAssessments(recruiterId: string) {
+    const { data, error } = await supabase
+        .from('assessments')
+        .select(`
+      *,
+      application:applications!inner(
+        id, candidate_id, status,
+        candidate:profiles!candidate_id(id, full_name, email, avatar_url),
+        job:jobs!inner(id, title, company_name, recruiter_id)
+      )
+    `)
+        .eq('application.job.recruiter_id', recruiterId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching recruiter assessments:', error);
+        return [];
+    }
+
+    return data || [];
+}
+
+export async function updateAssessment(assessmentId: string, updates: Record<string, any>) {
+    const { data, error } = await supabase
+        .from('assessments')
+        .update(updates)
+        .eq('id', assessmentId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error updating assessment:', error);
+        return null;
+    }
+
+    return data;
+}
+
+// ── Interview Scheduling ─────────────────────────────────────
+
+export async function scheduleInterview(
+    applicationId: string,
+    candidateId: string,
+    recruiterId: string,
+    interviewDate: string,
+    interviewType: string,
+    notes: string
+) {
+    // 1. Update application status
+    await updateApplicationStatus(applicationId, 'interview_scheduled');
+
+    // 2. Add interview stage
+    const existingStages = await supabase
+        .from('application_stages')
+        .select('stage_order')
+        .eq('application_id', applicationId)
+        .order('stage_order', { ascending: false })
+        .limit(1);
+
+    const nextOrder = (existingStages.data?.[0]?.stage_order || 0) + 1;
+
+    await addApplicationStage(
+        applicationId,
+        `Interview – ${interviewType}`,
+        nextOrder,
+        'active',
+        `Scheduled for ${new Date(interviewDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. ${notes}`
+    );
+
+    // 3. Send a message to the candidate
+    await sendMessage(
+        applicationId,
+        recruiterId,
+        `Your ${interviewType} interview has been scheduled for ${new Date(interviewDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. ${notes ? `Notes: ${notes}` : ''}`
+    );
+
+    return { error: null };
+}
+
+// ── Recruiter Stats ──────────────────────────────────────────
+
+export async function getRecruiterStats(recruiterId: string) {
+    const { data: jobs } = await supabase.from('jobs').select('id, status').eq('recruiter_id', recruiterId);
+    const jobIds = (jobs || []).map((j) => j.id);
+    const activeJobs = (jobs || []).filter((j) => j.status === 'active').length;
+
+    let totalApplicants = 0;
+    let interviewCount = 0;
+    let offerCount = 0;
+
+    if (jobIds.length > 0) {
+        const { data: apps } = await supabase
+            .from('applications')
+            .select('id, status')
+            .in('job_id', jobIds);
+
+        totalApplicants = apps?.length || 0;
+        interviewCount = apps?.filter((a) => a.status === 'interview_scheduled').length || 0;
+        offerCount = apps?.filter((a) => a.status === 'offer').length || 0;
+    }
+
+    return { activeJobs, totalJobs: jobs?.length || 0, totalApplicants, interviewCount, offerCount };
 }
 
 // ── Copilot Messages ─────────────────────────────────────────
