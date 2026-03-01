@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getApplications, getMessages, sendMessage, subscribeToMessages } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { MessageSquare, Send, Building, Circle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
