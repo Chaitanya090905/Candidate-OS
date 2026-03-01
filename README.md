@@ -1,3 +1,5 @@
+# CandidateOS
+
 <p align="center">
   <img src="https://api.dicebear.com/7.x/shapes/svg?seed=candidateos&backgroundColor=7c3aed&size=80" alt="CandidateOS Logo" width="80" height="80" />
 </p>
@@ -21,41 +23,58 @@
 
 ## 🚀 Overview
 
-**CandidateOS** is a full-stack career management platform that connects candidates and recruiters through an intelligent, AI-driven workflow. Candidates can apply for jobs, take AI-scored assessments, prepare for interviews with real-time AI feedback, and optimize their resumes — all from a single dashboard. Recruiters can post jobs, manage candidate pipelines, assign assessments, schedule interviews, and communicate with candidates.
+**CandidateOS** is a full-stack AI-powered career platform that connects candidates and recruiters through an intelligent workflow.
 
-### ✨ Key Features
+### For Candidates
 
-| Feature | Description |
-|---------|-------------|
-| 🧠 **AI Copilot** | Contextual career assistant powered by Groq (Llama 3.1) available on every page |
-| 📝 **Resume Studio** | AI-powered resume analysis with match scoring, keyword suggestions, and section improvements |
-| 🎯 **Interview Prep** | Generate role-specific questions and get AI-scored answers with detailed feedback |
-| 📋 **Assessment Hub** | AI-evaluated assessments with per-question scoring, grading, and feedback |
-| 📊 **Skill Gap Analysis** | Identify areas for improvement based on job requirements |
-| 💼 **Job Browser** | Search, filter, and apply to jobs with one click |
-| 📧 **Email Notifications** | Automated EmailJS-powered notifications for status updates, interviews, assessments, and messages |
-| 👥 **Recruiter Pipeline** | Drag-and-manage candidate pipeline with status tracking |
-| 📈 **Application Timeline** | Visual stage-by-stage progress tracker for each application |
-| 💬 **Real-time Messages** | Direct communication between candidates and recruiters |
-| ⚙️ **Settings** | Profile management, notification preferences, security, and appearance |
-| ❓ **Help Center** | Searchable FAQs and platform documentation |
+* Apply to jobs
+* Take AI-scored assessments
+* Practice interviews with real-time feedback
+* Optimize resumes using AI
+* Track application progress
+
+### For Recruiters
+
+* Post and manage jobs
+* Manage candidate pipelines
+* Assign assessments
+* Schedule interviews
+* Communicate with candidates
+
+---
+
+## ✨ Key Features
+
+| Feature                 | Description                                         |
+| ----------------------- | --------------------------------------------------- |
+| 🧠 AI Copilot           | Contextual assistant powered by Groq (Llama 3.1)    |
+| 📝 Resume Studio        | Resume analysis with match scoring and improvements |
+| 🎯 Interview Prep       | AI-generated questions with answer evaluation       |
+| 📋 Assessment Hub       | AI-evaluated assessments with scoring and feedback  |
+| 📊 Skill Gap Analysis   | Identify missing skills and learning paths          |
+| 💼 Job Browser          | Search and apply to jobs                            |
+| 📧 Email Notifications  | Automated updates via EmailJS                       |
+| 👥 Recruiter Pipeline   | Drag-and-manage candidate stages                    |
+| 📈 Application Timeline | Visual progress tracker                             |
+| 💬 Real-time Messages   | Candidate–recruiter chat                            |
+| ⚙️ Settings             | Profile, notifications, and security                |
+| ❓ Help Center           | FAQs and documentation                              |
 
 ---
 
 ## 🏗️ Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18 + TypeScript |
-| **Build Tool** | Vite 5 |
-| **Styling** | Tailwind CSS + Shadcn/ui |
-| **State** | Zustand (UI state) + React Query (server state) |
-| **Backend** | Supabase (Auth, PostgreSQL, Storage, RLS) |
-| **AI** | Groq API (Llama 3.1 8B Instant) |
-| **Email** | EmailJS |
-| **Animations** | Framer Motion |
-| **Icons** | Lucide React |
-| **Routing** | React Router v6 |
+| Layer      | Technology                                |
+| ---------- | ----------------------------------------- |
+| Frontend   | React 18 + TypeScript                     |
+| Build Tool | Vite 5                                    |
+| Styling    | Tailwind CSS + Shadcn/ui                  |
+| State      | Zustand + React Query                     |
+| Backend    | Supabase (Auth, PostgreSQL, Storage, RLS) |
+| AI         | Groq (Llama 3.1 8B Instant)               |
+| Email      | EmailJS                                   |
+| Animations | Framer Motion                             |
+| Routing    | React Router v6                           |
 
 ---
 
@@ -63,47 +82,43 @@
 
 ```
 carrier-compas/
-├── public/                     # Static assets
+├── public/
 ├── src/
-│   ├── components/             # Reusable UI components
-│   │   ├── layout/             # AppSidebar, TopBar, PageWrapper
-│   │   ├── ui/                 # Badge, Skeleton, EmptyState, ErrorState, etc.
-│   │   └── AICopilot.tsx       # AI chat drawer
+│   ├── components/
+│   │   ├── layout/
+│   │   ├── ui/
+│   │   └── AICopilot.tsx
 │   ├── contexts/
-│   │   └── AuthContext.tsx      # Authentication provider
+│   │   └── AuthContext.tsx
 │   ├── lib/
-│   │   ├── ai.ts               # Groq AI functions (resume, interview, copilot)
-│   │   ├── api.ts              # Supabase API calls
-│   │   ├── email.ts            # EmailJS notification helpers
-│   │   ├── supabase.ts         # Supabase client
-│   │   └── utils.ts            # Utility functions
+│   │   ├── ai.ts
+│   │   ├── api.ts
+│   │   ├── email.ts
+│   │   ├── supabase.ts
+│   │   └── utils.ts
 │   ├── pages/
-│   │   ├── recruiter/          # Recruiter-specific pages
-│   │   │   ├── RecruiterDashboard.tsx
-│   │   │   ├── JobManagement.tsx
-│   │   │   ├── CandidatePipeline.tsx
-│   │   │   └── AssessmentManagement.tsx
-│   │   ├── Dashboard.tsx       # Candidate dashboard
-│   │   ├── Applications.tsx    # Application list
-│   │   ├── ApplicationDetail.tsx # Timeline + detail view
-│   │   ├── AssessmentHub.tsx   # AI-scored assessments
-│   │   ├── InterviewPrep.tsx   # AI interview practice
-│   │   ├── ResumeStudio.tsx    # AI resume analysis
-│   │   ├── BrowseJobs.tsx      # Job search
+│   │   ├── recruiter/
+│   │   ├── Dashboard.tsx
+│   │   ├── Applications.tsx
+│   │   ├── ApplicationDetail.tsx
+│   │   ├── AssessmentHub.tsx
+│   │   ├── InterviewPrep.tsx
+│   │   ├── ResumeStudio.tsx
+│   │   ├── BrowseJobs.tsx
 │   │   ├── SkillGapAnalysis.tsx
-│   │   ├── Messages.tsx        # Chat
-│   │   ├── Settings.tsx        # Account settings
-│   │   ├── Profile.tsx         # User profile
-│   │   ├── Help.tsx            # Help center
-│   │   ├── Auth.tsx            # Login/Signup
-│   │   └── Landing.tsx         # Public landing page
+│   │   ├── Messages.tsx
+│   │   ├── Settings.tsx
+│   │   ├── Profile.tsx
+│   │   ├── Help.tsx
+│   │   ├── Auth.tsx
+│   │   └── Landing.tsx
 │   ├── store/
-│   │   └── appStore.ts         # Zustand UI store
-│   ├── App.tsx                 # Routes + layout
-│   └── main.tsx                # Entry point
+│   │   └── appStore.ts
+│   ├── App.tsx
+│   └── main.tsx
 ├── supabase/
-│   └── update.sql              # Database migrations
-├── .env                        # Environment variables (not committed)
+│   └── update.sql
+├── .env
 └── package.json
 ```
 
@@ -113,55 +128,66 @@ carrier-compas/
 
 ### Prerequisites
 
-- **Node.js** 18+ and **npm**
-- A **Supabase** project ([supabase.com](https://supabase.com))
-- A **Groq** API key ([console.groq.com](https://console.groq.com))
-- An **EmailJS** account ([emailjs.com](https://www.emailjs.com))
+* Node.js 18+
+* Supabase account
+* Groq API key
+* EmailJS account
 
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-username/carrier-compas.git
+git clone https://github.com/arshadahmedjwork-create/knb.git
 cd carrier-compas
 npm install
 ```
 
 ### 2. Environment Variables
 
-Create a `.env` file in the root:
+Create a `.env` file:
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-VITE_GROQ_API_KEY=your-groq-api-key
+VITE_SUPABASE_URL=your-url
+VITE_SUPABASE_ANON_KEY=your-key
+VITE_GROQ_API_KEY=your-key
 ```
+
+---
 
 ### 3. Database Setup
 
-Run the SQL migration in your Supabase SQL Editor:
+Run the SQL from:
 
-```bash
-# Copy the contents of supabase/update.sql and execute in Supabase SQL Editor
+```
+supabase/update.sql
 ```
 
-This creates the required tables:
-- `profiles` — User profiles with role-based access
-- `jobs` — Job postings
-- `applications` — Candidate applications
-- `application_stages` — Timeline stages per application
-- `assessments` — AI-scored assessments with JSONB responses
-- `interviews` — Scheduled interviews
-- `messages` — Candidate-recruiter communication
+Tables created:
 
-### 4. Run Development Server
+* profiles
+* jobs
+* applications
+* application_stages
+* assessments
+* interviews
+* messages
+
+---
+
+### 4. Run Development
 
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`.
+App runs at:
 
-### 5. Build for Production
+```
+http://localhost:5173
+```
+
+---
+
+### 5. Production Build
 
 ```bash
 npm run build
@@ -172,64 +198,60 @@ npm run preview
 
 ## 🔐 Authentication & Roles
 
-CandidateOS uses **Supabase Auth** with two roles:
+| Role      | Access                                                    |
+| --------- | --------------------------------------------------------- |
+| Candidate | Job search, applications, resume, assessments, interviews |
+| Recruiter | Job posting, pipeline, candidate management               |
 
-| Role | Access |
-|------|--------|
-| **Candidate** | Dashboard, Browse Jobs, Applications, Resume Studio, Assessments, Interview Prep, Messages, Skill Gap Analysis |
-| **Recruiter** | Recruiter Dashboard, Job Postings, Candidate Pipeline, Assessment Management, Messages |
-
-Both roles have access to **Settings**, **Profile**, **Help**, and the **AI Copilot**.
-
-Row-Level Security (RLS) is enforced on all tables to ensure data isolation between users.
+All tables use **Row Level Security (RLS)** for data isolation.
 
 ---
 
 ## 🤖 AI Features
 
-All AI features are powered by **Groq** using the `llama-3.1-8b-instant` model:
+Powered by **Groq (llama-3.1-8b-instant)**
 
-| Feature | Function | Description |
-|---------|----------|-------------|
-| Resume Tailoring | `tailorResume()` | Analyzes resume against job description, provides match score and suggestions |
-| Interview Questions | `generateInterviewQuestions()` | Generates role-specific questions with coaching tips |
-| Answer Evaluation | `evaluateAnswer()` | Scores answers 1-10 with grade and detailed feedback |
-| Skill Gap Analysis | `analyzeSkillGaps()` | Identifies missing skills and recommends learning paths |
-| AI Copilot | `copilotChat()` | Contextual career chat assistant with conversation memory |
-
-Input truncation is applied to stay within Groq's free-tier rate limits.
+| Feature             | Function                       |
+| ------------------- | ------------------------------ |
+| Resume Tailoring    | Match score + suggestions      |
+| Interview Questions | Role-specific generation       |
+| Answer Evaluation   | Score + feedback               |
+| Skill Gap Analysis  | Missing skills + learning path |
+| AI Copilot          | Contextual career assistant    |
 
 ---
 
 ## 📧 Email Notifications
 
-Automated email notifications via **EmailJS** are triggered on:
+Triggered for:
 
-- 📅 Interview scheduled
-- 📋 Assessment assigned
-- 📊 Assessment scored
-- 🔄 Application status change
-- 💬 New message received
+* Interview scheduled
+* Assessment assigned/scored
+* Application status change
+* New message
 
-All notifications use a single `{{message}}` template variable for flexible formatting.
+Powered by **EmailJS**.
 
 ---
 
-## 🛠️ Available Scripts
+## 🛠️ Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run ESLint |
-| `npm run test` | Run tests |
-| `npm run test:watch` | Run tests in watch mode |
+| Command         | Description      |
+| --------------- | ---------------- |
+| npm run dev     | Start dev server |
+| npm run build   | Production build |
+| npm run preview | Preview build    |
+| npm run lint    | ESLint           |
+| npm run test    | Run tests        |
 
 ---
 
 ## 📄 License
 
-This project belongs to Chaitanya Hiran#   C a n d i d a t e - O S 
- 
- 
+Proprietary – © Chaitanya Hiran
+
+---
+
+## ⭐ Support
+
+If you like this project, give it a **star** on GitHub!
