@@ -4,7 +4,7 @@ import { getApplications, getAssessments } from "@/lib/api";
 import { ApplicationCard } from "@/components/dashboard/ApplicationCard";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import {
   Briefcase, Calendar, ClipboardCheck, User, Sparkles,
