@@ -8,7 +8,7 @@ import { FairnessBadge } from "@/components/ui/FairnessBadge";
 import { Badge } from "@/components/ui/badge";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import {
