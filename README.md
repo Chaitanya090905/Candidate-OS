@@ -230,4 +230,5 @@ All notifications use a single `{{message}}` template variable for flexible form
 
 ## 📄 License
 
-This project belongs to Chaitanya Hiran
+This project belongs to Chaitanya Hiran#   C a n d i d a t e - O S  
+ 
