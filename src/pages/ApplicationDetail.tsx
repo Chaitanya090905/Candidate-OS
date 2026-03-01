@@ -5,7 +5,7 @@ import { getApplication, getMessages, sendMessage, subscribeToMessages } from "@
 import { generateInterviewQuestions } from "@/lib/ai";
 import { StageTimeline } from "@/components/ui/StageTimeline";
 import { FairnessBadge } from "@/components/ui/FairnessBadge";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
 import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
