@@ -7,9 +7,9 @@ import {
     createAssessment, scheduleInterview, sendMessage,
 } from "@/lib/api";
 import { notifyInterviewScheduled, notifyAssessmentAssigned, notifyStatusChange, notifyNewMessage } from "@/lib/email";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import {
     ArrowLeft, Users, Clock, ChevronDown, User, MapPin,

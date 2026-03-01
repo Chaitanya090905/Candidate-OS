@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useAppStore } from "@/store/appStore";
 import { chatWithCopilot } from "@/lib/ai";
 import { supabase } from "@/lib/supabase";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Sparkles, Send, X, ChevronDown, FileText, Brain,
   MessageSquare, Search, BarChart3,

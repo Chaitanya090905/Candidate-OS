@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabase";
 import { tailorResume, type ResumeTailorResult } from "@/lib/ai";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import {
   FileText, Upload, Save, Sparkles, Download, AlertCircle, CheckCircle2, Type,

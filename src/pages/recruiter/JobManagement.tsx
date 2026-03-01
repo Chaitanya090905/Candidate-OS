@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRecruiterJobs, createJob, updateJob } from "@/lib/api";
 import type { JobRow } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import {
     PlusCircle, Briefcase, X, Pencil, MapPin, Banknote,
     Building, Clock, Save, Trash2,

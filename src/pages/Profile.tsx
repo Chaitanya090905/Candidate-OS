@@ -2,8 +2,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { getApplications, getAssessments } from "@/lib/api";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     User, Mail, MapPin, Building, Briefcase, Calendar,
     CheckCircle2, Clock, BarChart3, FileText, Star, Award,

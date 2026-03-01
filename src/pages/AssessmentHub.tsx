@@ -8,7 +8,7 @@ import { generateInterviewQuestions, evaluateAnswer, type InterviewQuestion } fr
 import { notifyAssessmentScored } from "@/lib/email";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
 import { PageWrapper } from "@/components/layout/PageWrapper";

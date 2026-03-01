@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { updateProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import {
     User, Mail, Building, MapPin, Briefcase, Save, Camera,
     Shield, Bell, Palette, LogOut, Trash2, CheckCircle2,

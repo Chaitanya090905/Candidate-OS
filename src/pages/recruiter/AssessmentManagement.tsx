@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRecruiterAssessments, updateAssessment } from "@/lib/api";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import {
     ClipboardCheck, Clock, Pencil, X, Save, User,

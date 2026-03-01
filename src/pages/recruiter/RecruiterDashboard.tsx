@@ -2,8 +2,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { useQuery } from "@tanstack/react-query";
 import { getRecruiterJobs, getRecruiterStats } from "@/lib/api";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
     Briefcase, Users, Calendar, Gift, PlusCircle,

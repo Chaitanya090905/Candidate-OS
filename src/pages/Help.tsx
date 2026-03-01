@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
 import {
     HelpCircle, MessageSquare, BookOpen, Mail, ExternalLink,
