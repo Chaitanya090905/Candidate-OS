@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getApplications } from "@/lib/api";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { Briefcase, Building, ArrowUpDown, Filter, MapPin, Clock } from "lucide-react";
