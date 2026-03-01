@@ -9,7 +9,7 @@ import { notifyAssessmentScored } from "@/lib/email";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Badge } from "@/components/ui/Badge";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { AIResponseBlock } from "@/components/ui/AIResponseBlock";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import {
